@@ -1,0 +1,7 @@
+# 2 health = 1 heart in-game
+
+Blocks-Mobs:
+  Crafting_Table:
+    health: 10
+  Zombie:
+    health: 5

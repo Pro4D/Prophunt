@@ -1,0 +1,12 @@
+name: Prophunt
+version: '${project.version}'
+main: com.pro4d.prophunt.Prophunt
+api-version: 1.18
+depend: [ WorldEdit, MythicMobs, LibsDisguises, ModelEngine ]
+authors: [ Pro4D ]
+description: Popular GMod game, 'Prophunt', but in Minecraft!
+
+commands:
+  prophunt:
+    aliases:
+      - ph

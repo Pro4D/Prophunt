@@ -1,0 +1,17 @@
+#Time in seconds
+
+round-time: 600
+vote-time: 30
+hunter-time: 20
+
+block-break: false
+minimum-players: 3
+
+auto-start-when-enough-players: false
+
+team-damage: true
+pvp-enabled: true
+
+prop-swap-item: NETHER_STAR
+prop-taunt-item: GRAY_DYE
+hunter-weapon: DIAMOND_SWORD

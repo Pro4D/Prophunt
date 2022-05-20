@@ -1,0 +1,17 @@
+Maps:
+  Lobby:
+    spawnpoint:
+      world:
+      x: 0
+      y: 0
+      z: 0
+  MapNameHere:
+    world: world
+    corner-1:
+      x: 0
+      y: 0
+      z: 0
+    corner-2:
+      x: 0
+      y: 0
+      z: 0
