@@ -5,6 +5,7 @@ import com.pro4d.prophunt.commands.PHuntTabCompleter;
 import com.pro4d.prophunt.config.PHuntConfig;
 import com.pro4d.prophunt.listener.PHuntListener;
 import com.pro4d.prophunt.managers.PHuntGameManager;
+import com.pro4d.prophunt.misc.PHuntMap;
 import com.pro4d.prophunt.utils.PHuntMessages;
 import com.pro4d.prophunt.utils.PHuntUtils;
 import org.bukkit.inventory.ItemStack;
@@ -34,30 +35,31 @@ public final class Prophunt extends JavaPlugin {
 
     private final String mapPath = this.getDataFolder().getAbsolutePath() + "/maps/";
 
-
     @Override
     public void onEnable() {
         // Plugin startup logic
         if(pm.getPlugin("WorldEdit") == null) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&4WorldEdit is required for this plugin, please install it!"));
-            pm.disablePlugin(this);
-        }
-        if(pm.getPlugin("MythicMobs") == null) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&4MythicMobs is required for this plugin, please install it"));
-            pm.disablePlugin(this);
-        }
-        if(pm.getPlugin("LibsDisguises") == null) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&4LibsDisguises is required for this plugin, please install it"));
-            pm.disablePlugin(this);
-        }
-        if(pm.getPlugin("ModelEngine") == null) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&4ModelEngine is required for this plugin, please install it"));
+            utils.log(Level.WARNING, "&4WorldEdit is required for this plugin, please install it!");
             pm.disablePlugin(this);
         }
 
-        if(getServer().getScoreboardManager() != null) {
-            scoreboard = getServer().getScoreboardManager().getNewScoreboard();
+        if(pm.getPlugin("MythicMobs") == null) {
+            utils.log(Level.WARNING, "&4MythicMobs is required for this plugin, please install it");
+            pm.disablePlugin(this);
         }
+
+        if(pm.getPlugin("LibsDisguises") == null) {
+            utils.log(Level.WARNING, "&4LibsDisguises is required for this plugin, please install it");
+            pm.disablePlugin(this);
+        }
+
+        if(pm.getPlugin("ModelEngine") == null) {
+            utils.log(Level.WARNING, "&4ModelEngine is required for this plugin, please install it");
+            pm.disablePlugin(this);
+        }
+
+        if(getServer().getScoreboardManager() != null) scoreboard = getServer().getScoreboardManager().getNewScoreboard();
+
 
         utils = new PHuntUtils(this);
         messages = new PHuntMessages();
@@ -73,17 +75,14 @@ public final class Prophunt extends JavaPlugin {
 
         listener = new PHuntListener(this);
 
+        gameManager.getMapManager().getAllMaps().keySet().forEach(PHuntMap::createBlockList);
+
     }
 
     @Override
     public void onDisable() {
         // Plugin shutdown logic
-        mapConfig.saveConfig();
-        settingsConfig.saveConfig();
-        swapConfig.saveConfig();
-
         if(gameManager != null) gameManager.cleanup();
-
     }
 
 
@@ -99,9 +98,7 @@ public final class Prophunt extends JavaPlugin {
         return swapConfig;
     }
 
-    public PHuntUtils getUtils() {
-        return utils;
-    }
+    public PHuntUtils getUtils() {return utils;}
 
     public PHuntGameManager getGameManager() {
         return gameManager;
@@ -114,7 +111,7 @@ public final class Prophunt extends JavaPlugin {
     public PHuntMessages getMessages() {return messages;}
 
     public int getDistance() {
-        return 10;
+        return 7;
     }
 
     public Map<UUID, ItemStack> getHeads() {
@@ -128,6 +125,5 @@ public final class Prophunt extends JavaPlugin {
     public static Scoreboard getScoreboard() {
         return scoreboard;
     }
-
 
 }

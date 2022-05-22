@@ -73,14 +73,14 @@ public class PHuntSettingsManager {
                 Location loc = validateLobbySpawnpoint(plugin.getMapConfig(), keyPath + ".spawnpoint");
                 if(loc != null) {
                     gameManager.getMapManager().setLobbySpawnpoint(loc);
-                    utils.log(Level.WARNING, PHuntMessages.translate("&cSuccessfully set lobby spawnpoint!"));
+                    utils.log(Level.WARNING, "&cSuccessfully set lobby spawnpoint!");
                 }
 
             } else {
                 PHuntMap map = validateMap(plugin.getMapConfig(), keyPath, key);
                 if(map != null) {
                     gameManager.getMapManager().registerMap(map);
-                    utils.log(Level.WARNING, PHuntMessages.translate("Registered new map: " + map.getName()));
+                    utils.log(Level.WARNING, "Registered new map: " + map.getName());
                 }
             }
 
@@ -207,7 +207,7 @@ public class PHuntSettingsManager {
     public Location validateLobbySpawnpoint(PHuntConfig pHuntConfig, String path) {
         FileConfiguration config = pHuntConfig.getConfig();
         if(!config.isConfigurationSection(path)) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&ePath '&r" + path + "&e' not found!"));
+            utils.log(Level.WARNING, "&ePath '&r" + path + "&e' not found!");
             return null;
         }
 
@@ -251,13 +251,13 @@ public class PHuntSettingsManager {
                 }
 
             } else {
-                utils.log(Level.WARNING, PHuntMessages.translate("&eValue of " + key + " is invalid for Lobby spawnpoint!"));
+                utils.log(Level.WARNING, "&eValue of " + key + " is invalid for Lobby spawnpoint!");
                 return null;
             }
 
         }
         if(!worldFound || !xFound || !yFound || !zFound) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&cCould not set lobby spawnpoint!"));
+            utils.log(Level.WARNING, "&4AE515Could not set lobby spawnpoint!");
             return null;
         }
 
@@ -267,7 +267,7 @@ public class PHuntSettingsManager {
     public Vector validateVector(PHuntConfig pHuntConfig, String path) {
         FileConfiguration config = pHuntConfig.getConfig();
         if(!config.isConfigurationSection(path)) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&ePath '&r" + path + "&e' not found!"));
+            utils.log(Level.WARNING, "&ePath '&r" + path + "&e' not found!");
             return null;
         }
 
@@ -301,13 +301,13 @@ public class PHuntSettingsManager {
                 }
 
             } else {
-                utils.log(Level.WARNING, PHuntMessages.translate("&eValue of " + key + " is invalid for vector at path: '&r" + path + "&e' in config: &r" + config.getName()));
+                utils.log(Level.WARNING, "&eValue of " + key + " is invalid for vector at path: '&r" + path + "&e' in config: &r" + config.getName());
                 return null;
             }
 
         }
         if(!xFound || !yFound || !zFound) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&cCould not get all 3 coordinates for vector at path: '&r" + path + "&e' in config: &r" + config.getName()));
+            utils.log(Level.WARNING, "&cCould not get all 3 coordinates for vector at path: '&r" + path + "&e' in config: &r" + config.getName());
             return null;
         }
 
@@ -317,7 +317,7 @@ public class PHuntSettingsManager {
     public PHuntMap validateMap(PHuntConfig pHuntConfig, String path, String mapName) {
         FileConfiguration config = pHuntConfig.getConfig();
         if(!config.isConfigurationSection(path)) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&ePath '&r" + path + "&e' not found!"));
+            utils.log(Level.WARNING, "&ePath '&r" + path + "&e' not found!");
             return null;
         }
 
@@ -360,7 +360,7 @@ public class PHuntSettingsManager {
             }
         }
         if(!worldFound || !cornerOneSet || !cornerTwoSet) {
-            utils.log(Level.WARNING, PHuntMessages.translate("&cFailed to register map:&r " + mapName));
+            utils.log(Level.WARNING, "&cFailed to register map:&r " + mapName);
             return null;
         }
 
@@ -406,7 +406,7 @@ public class PHuntSettingsManager {
             }
         }
 
-        utils.log(Level.WARNING, PHuntMessages.translate("No Vanilla/MythicMobs items found for " + s));
+        utils.log(Level.WARNING, "No Vanilla/MythicMobs items found for " + s);
         return null;
     }
 

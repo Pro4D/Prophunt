@@ -35,8 +35,6 @@ public class PropManager {
     private final Map<UUID, String> disguisedMEG;
     private final Map<UUID, BlockData> disguisedBlocks;
 
-    private final Map<UUID, UUID> fakeEntities;
-
     private final List<FakeBlock> fakeBlocks;
 
     private final PHuntSettingsManager settingsManager;
@@ -51,8 +49,6 @@ public class PropManager {
         disguisedMEG = new HashMap<>();
         disguisedBlocks = new HashMap<>();
         this.settingsManager = settingsManager;
-
-        fakeEntities = new HashMap<>();
 
         fakeBlocks = new ArrayList<>();
 
@@ -157,7 +153,7 @@ public class PropManager {
         if(!isDisguisedAsBlock(entity)) return;
 
         Location l = entity.getLocation().clone();
-        World world = entity.getLocation().clone().getWorld();
+        World world = l.getWorld();
         if(world == null) return;
 
         if(world.getBlockAt(l).getType() != Material.AIR) {
@@ -172,12 +168,24 @@ public class PropManager {
 
         world.setBlockData(bLoc, b.getMaterial().createBlockData());
 
+//        Bukkit.getOnlinePlayers().forEach(p -> p.sendBlockChange(bLoc, Material.AIR.createBlockData()));
+//
+//        ArmorStand as = (ArmorStand) world.spawnEntity(bLoc, EntityType.ARMOR_STAND);
+//        as.setBasePlate(false);
+//        as.setArms(false);
+//        as.setAI(false);
+//        as.setGravity(false);
+//
+//        MiscDisguise miscDisguise = new MiscDisguise(DisguiseType.FALLING_BLOCK, b.getMaterial());
+//        miscDisguise.setEntity(entity);
+//        miscDisguise.startDisguise();
+
+
+
         lockedPlayers.add(entity.getUniqueId());
         lockedBlocks.put(entity.getUniqueId(), b);
 
         fakeBlocks.add(new FakeBlock(entity.getUniqueId(), b.getMaterial(), bLoc));
-
-//        fakeBlock.put(bLoc, entity.getUniqueId());
 
     }
 
@@ -207,7 +215,6 @@ public class PropManager {
 
         lockedPlayers.add(target.getUniqueId());
         lockedEntities.put(target.getUniqueId(), entity);
-        fakeEntities.put(as.getUniqueId(), target.getUniqueId());
 
     }
 
@@ -241,7 +248,6 @@ public class PropManager {
 
         lockedPlayers.add(entity.getUniqueId());
         lockedMEG.put(entity.getUniqueId(), modelID);
-        fakeEntities.put(as.getUniqueId(), entity.getUniqueId());
 
     }
 
@@ -353,8 +359,6 @@ public class PropManager {
     public List<FakeBlock> getFakeBlocks() {
         return fakeBlocks;
     }
-
-    //    public Map<UUID, UUID> getFakeEntities() {return fakeEntities;}
 
 }
 

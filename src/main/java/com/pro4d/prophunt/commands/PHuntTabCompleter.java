@@ -6,6 +6,7 @@ import com.pro4d.prophunt.enums.Teams;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,7 +19,8 @@ public class PHuntTabCompleter implements TabCompleter {
     private final Prophunt plugin;
     public PHuntTabCompleter(Prophunt plugin) {
         this.plugin = plugin;
-        plugin.getServer().getPluginCommand("prophunt").setTabCompleter(this);
+        PluginCommand command = plugin.getServer().getPluginCommand("prophunt");
+        if(command != null) command.setTabCompleter(this);
     }
 
 

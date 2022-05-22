@@ -34,14 +34,13 @@ public class PHuntUtils {
         unsafeBlocks.add(Material.WATER);
         unsafeBlocks.add(Material.MAGMA_BLOCK);
         unsafeBlocks.add(Material.FIRE);
+        unsafeBlocks.add(Material.AIR);
 
         df = new DecimalFormat("#.##");
 
     }
 
-    public void log(Level level, String message) {
-        logger.log(level, message);
-    }
+    public void log(Level level, String message) {logger.log(level, PHuntMessages.translate(message));}
 
     public static int randomInteger(int min, int max) {
         return (int) Math.floor(Math.random() * (max - min + 1) + min);
@@ -64,23 +63,12 @@ public class PHuntUtils {
         return BlockVector3.at(vector.getX(), vector.getY(), vector.getZ());
     }
 
-    public static boolean isLocationSafe(Location location) {
-        if(location == null) return false;
-//        Block bUp = location.clone().add(0, 1, 0).getBlock();
-//        bUp.getChunk().load(true);
-//        if(bUp.getType() != Material.AIR) {
-//            return false;
-//        }
-//
-//        Block b = location.getBlock();
-//        b.getChunk().load(true);
-//        if(b.getType() != Material.AIR) {
-//            return false;
-//        }
+    public static boolean isLocationUnsafe(Location location) {
+        if(location == null) return true;
 
         Block bDown = location.clone().subtract(0, 1, 0).getBlock();
         bDown.getChunk().load(true);
-        return !unsafeBlocks.contains(bDown.getType());
+        return unsafeBlocks.contains(bDown.getType());
     }
 
     public static ItemStack findItem(Inventory inv, ItemStack item) {

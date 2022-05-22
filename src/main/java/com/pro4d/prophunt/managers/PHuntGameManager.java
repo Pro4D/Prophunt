@@ -1,18 +1,19 @@
 package com.pro4d.prophunt.managers;
 
 import com.pro4d.prophunt.Prophunt;
-import com.pro4d.prophunt.misc.TeamInventory;
 import com.pro4d.prophunt.enums.Teams;
 import com.pro4d.prophunt.enums.WinningCondition;
 import com.pro4d.prophunt.misc.GameStates;
 import com.pro4d.prophunt.misc.ItemBuilder;
 import com.pro4d.prophunt.misc.PHuntMap;
+import com.pro4d.prophunt.misc.TeamInventory;
 import com.pro4d.prophunt.utils.PHuntMessages;
 import com.pro4d.prophunt.utils.PHuntUtils;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.block.Block;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -21,7 +22,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -100,7 +100,7 @@ public class PHuntGameManager {
             if (mapManager.getAllMaps().isEmpty()) {
                 plugin.getServer().getOnlinePlayers().forEach(p -> {
                     p.sendMessage(PHuntMessages.translate("&cError starting game, check console"));
-                    plugin.getUtils().log(Level.WARNING, PHuntMessages.translate("&cNo maps found, setup maps in config."));
+                    plugin.getUtils().log(Level.WARNING, "&cNo maps found, setup maps in config.");
                     cleanup();
                 });
                 return;
@@ -109,15 +109,16 @@ public class PHuntGameManager {
             if (mapManager.getLobbySpawnpoint() == null) {
                 plugin.getServer().getOnlinePlayers().forEach(p -> {
                     p.sendMessage(PHuntMessages.translate("&cError starting game, check console"));
-                    plugin.getUtils().log(Level.WARNING, PHuntMessages.translate("&cLobby spawnpoint from config is invalid!"));
+                    plugin.getUtils().log(Level.WARNING, "&cLobby spawnpoint from config is invalid!");
                     cleanup();
                 });
                 return;
             }
 
-            if(plugin.getServer().getOnlinePlayers().stream().filter(p -> p.getGameMode() != GameMode.SPECTATOR).count() < settingsManager.getMinimumPlayerCount()) {
+            if(allPlayers.size() < settingsManager.getMinimumPlayerCount()) {
                 plugin.getServer().getOnlinePlayers().forEach(p -> {
                     p.sendMessage(PHuntMessages.translate("&cError starting game, check console"));
+                    plugin.getUtils().log(Level.WARNING, "&cNot enough players to start game!");
                     cleanup();
                 });
                 return;
@@ -424,22 +425,27 @@ public class PHuntGameManager {
             map = mapManager.getRandomMap();
         }
 
-        Vector min = map.getCornerOne();
-        Vector max = map.getCornerTwo();
-        World world = map.getWorld();
 
-        Location loc = PHuntUtils.randomLocation(world, min, max);
-        loc.getChunk().load(true);
-        //block check
-        while(!PHuntUtils.isLocationSafe(loc)) {
-            loc = PHuntUtils.randomLocation(world, min, max);
-            loc.getChunk().load(true);
+        Location loc = PHuntUtils.randomLocation(map.getWorld(), map.getCornerOne(), map.getCornerTwo());
+        List<Location> blockLocations = new ArrayList<>();
+        for(Block b: map.getBlocks()) {blockLocations.add(b.getLocation());}
+
+        if(PHuntUtils.isLocationUnsafe(loc) || map.getWorld().getBlockAt(loc).getType() != Material.AIR || !blockLocations.contains(loc)) {
+            boolean startingPointFound = false;
+            for(Block b : map.getBlocks()) {
+                if(b.getType() != Material.AIR) continue;
+                if(PHuntUtils.isLocationUnsafe(b.getLocation())) continue;
+                loc = b.getLocation();
+                startingPointFound = true;
+            }
+            if(!startingPointFound) {
+                plugin.getServer().getOnlinePlayers().forEach(p -> p.sendMessage(PHuntMessages.translate("&cNo clear starting point found for map &r" + map.getName() + "&c, could not start game.")));
+                setGameState(GameStates.LOBBY);
+                return;
+            }
         }
 
-        loc = loc.add(.5, 1, .5);
-
         tempSpecSpawn = loc;
-
         plugin.getServer().getOnlinePlayers().stream().filter(player -> player.getGameMode() != GameMode.SPECTATOR).forEach(player -> {
             if (!allPlayers.contains(player.getUniqueId())) {
                 int c = PHuntUtils.randomInteger(1, 2);

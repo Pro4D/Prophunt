@@ -5,7 +5,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.logging.Level;
 
 public class PHuntConfig {
@@ -22,18 +21,7 @@ public class PHuntConfig {
         config = createConfig();
     }
 
-    public void saveConfig() {
-        try {
-            config.save(file);
-
-        } catch (IOException e) {
-            plugin.getUtils().log(Level.CONFIG, "Could not save '" + name + ".yml' ");
-        }
-    }
-
-    public void loadConfig() {
-        config = YamlConfiguration.loadConfiguration(file);
-    }
+    public void loadConfig() {config = YamlConfiguration.loadConfiguration(file);}
 
     public FileConfiguration getConfig() {
         return config;

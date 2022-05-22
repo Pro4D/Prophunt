@@ -21,8 +21,8 @@ import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
-import org.bukkit.craftbukkit.v1_18_R1.entity.CraftPlayer;
-import org.bukkit.craftbukkit.v1_18_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_18_R2.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_18_R2.inventory.CraftItemStack;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -61,7 +61,6 @@ public class PHuntListener implements Listener {
 
         disconnectTeamMap = new HashMap<>();
         disconnectRoundCountMap = new HashMap<>();
-        //lastTeleportedTo = new HashMap<>();
 
         list = new ArrayList<>();
         list.add(new Pair<>(EnumItemSlot.a, CraftItemStack.asNMSCopy(new ItemStack(Material.AIR))));

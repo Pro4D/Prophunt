@@ -12,6 +12,7 @@ import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -26,15 +27,17 @@ public class PHuntCommands implements CommandExecutor {
     public PHuntCommands(Prophunt plugin) {
         this.plugin = plugin;
         gameManager = plugin.getGameManager();
-        plugin.getServer().getPluginCommand("prophunt").setExecutor(this);
+
+        PluginCommand command = plugin.getServer().getPluginCommand("prophunt");
+        if(command != null) command.setExecutor(this);
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if(args[0].equals("reload")) {
-            plugin.getMapConfig().saveConfig();
-            plugin.getSettingsConfig().saveConfig();
-            plugin.getSwapConfig().saveConfig();
+            plugin.getMapConfig().loadConfig();
+            plugin.getSettingsConfig().loadConfig();
+            plugin.getSwapConfig().loadConfig();
 
             gameManager.getSettingsManager().validateMapConfig();
             gameManager.getSettingsManager().validateSettingsConfig();
@@ -47,7 +50,7 @@ public class PHuntCommands implements CommandExecutor {
             sender.sendMessage(PHuntMessages.onlyPlayersMessage());
             return false;
         }
-        if(args.length == 0) {
+        if(args[0].equals("")) {
             sender.sendMessage(PHuntMessages.invalidCommandUsageMessage());
             return false;
         }
@@ -188,16 +191,6 @@ public class PHuntCommands implements CommandExecutor {
                 gameManager.setGameState(GameStates.ENDING);
                 return true;
 
-//            "chicken" death
-//            "iron-golem" death
-//            "anvil" place
-//            "dragon" growl
-//            "enderman" teleport
-//            elder guardian "curse"
-//            "firework" taunt
-//            "wolf" ambient
-//            "skeleton" hurt
-//            "cave" sound
             case "play-sound":
                 if(args.length != 2) {
                     player.sendMessage(PHuntMessages.invalidCommandUsageMessage());
@@ -267,21 +260,8 @@ public class PHuntCommands implements CommandExecutor {
                 player.teleport(gameManager.getMapManager().getLobbySpawnpoint());
                 return true;
 
-//            case "text":
-//                StringBuilder builder2 = new StringBuilder();
-//                for(String arg : args) {
-//                    if(arg.equals(args[0])) continue;
-//                    builder2.append(" ").append(arg);
-//                }
-//                player.sendMessage("S: " + PHuntMessages.translate(builder2.toString()));
-//                return true;
-
             case "bA":
                 gameManager.bloodAnimation(player.getLocation().add(0, .3, 0));
-                return true;
-
-            case "nT":
-
                 return true;
 
 //            case "shU":
@@ -294,15 +274,17 @@ public class PHuntCommands implements CommandExecutor {
 //                shulker.setGlowing(true);
 //                return true;
 
-//            case "temp":
-////                try {
-////                    plugin.getMapConfig().getConfig().save(plugin.getMapConfig().getFile());
-////                } catch (IOException e) {
-////                    plugin.getUtils().log(Level.CONFIG, "Could not save 'map.yml' ");
-////                }
-////                //plugin.getMapConfig().saveConfig();
+            case "edisgB":
+                LivingEntity e = PHuntUtils.getEntityInLOS(player, plugin.getDistance());
+                if(e == null) return false;
+                gameManager.getPropManager().disguiseAsBlock(e, player.getWorld().getBlockAt(player.getLocation().subtract(0, 1, 0)).getBlockData());
+                return true;
 
-//                return true;
+            case "edisgM":
+                LivingEntity ee = PHuntUtils.getEntityInLOS(player, plugin.getDistance());
+                if(ee == null) return false;
+                gameManager.getPropManager().disguiseAsModelEngineMob(ee, "kindletronsr");
+                return true;
 
         }
 
