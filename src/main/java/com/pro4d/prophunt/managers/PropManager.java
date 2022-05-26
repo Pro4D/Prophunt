@@ -1,6 +1,7 @@
 package com.pro4d.prophunt.managers;
 
 import com.pro4d.prophunt.misc.FakeBlock;
+import com.pro4d.prophunt.misc.FakeEntity;
 import com.pro4d.prophunt.utils.PHuntMessages;
 import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.model.ModeledEntity;
@@ -25,8 +26,6 @@ import java.util.*;
 
 public class PropManager {
 
-    private final List<UUID> lockedPlayers;
-
     private final Map<UUID, LivingEntity> lockedEntities;
     private final Map<UUID, String> lockedMEG;
     private final Map<UUID, BlockData> lockedBlocks;
@@ -36,11 +35,12 @@ public class PropManager {
     private final Map<UUID, BlockData> disguisedBlocks;
 
     private final List<FakeBlock> fakeBlocks;
+    private final List<FakeEntity> fakeEntities;
+    private final List<UUID> lockedPlayers;
 
     private final PHuntSettingsManager settingsManager;
     public PropManager(PHuntSettingsManager settingsManager) {
         lockedPlayers = new ArrayList<>();
-
         lockedBlocks = new HashMap<>();
         lockedEntities = new HashMap<>();
         lockedMEG = new HashMap<>();
@@ -51,10 +51,11 @@ public class PropManager {
         this.settingsManager = settingsManager;
 
         fakeBlocks = new ArrayList<>();
+        fakeEntities = new ArrayList<>();
 
     }
 
-    public void disguiseAsMob(LivingEntity target, LivingEntity entity) {
+    public void disguiseAsEntity(LivingEntity target, LivingEntity entity) {
         clearDisguise(target);
 
         EntityType type = entity.getType();
@@ -69,7 +70,6 @@ public class PropManager {
         disguise.setNotifyBar(DisguiseConfig.NotifyBar.NONE);
         disguise.startDisguise();
 
-
         if(settingsManager.getEntityHealth().containsKey(type)) {
             AttributeInstance maxHealth = target.getAttribute(Attribute.GENERIC_MAX_HEALTH);
             if(maxHealth != null) {
@@ -81,7 +81,7 @@ public class PropManager {
         disguisedMobs.put(target.getUniqueId(), entity);
     }
 
-    public void disguiseAsModelEngineMob(LivingEntity entity, String modelID) {
+    public void disguiseAsMEGEntity(LivingEntity entity, String modelID) {
         clearDisguise(entity);
 
         ModeledEntity me = ModelEngineAPI.getModeledEntity(entity.getUniqueId());
@@ -133,8 +133,6 @@ public class PropManager {
         disguisedBlocks.put(entity.getUniqueId(), b);
     }
 
-
-
     public boolean isDisguisedAsMob(LivingEntity entity) {
         return disguisedMobs.containsKey(entity.getUniqueId());
     }
@@ -147,9 +145,7 @@ public class PropManager {
         return disguisedMEG.containsKey(entity.getUniqueId());
     }
 
-
-
-    public void lockBlock(LivingEntity entity, BlockData b) {
+    public void lockBlock(LivingEntity entity) {
         if(!isDisguisedAsBlock(entity)) return;
 
         Location l = entity.getLocation().clone();
@@ -161,31 +157,31 @@ public class PropManager {
             return;
         }
 
-        Location bLoc = world.getBlockAt(l).getLocation();
+        BlockData b = disguisedBlocks.get(entity.getUniqueId());
 
         clearDisguise(entity);
         entity.setInvisible(true);
 
-        world.setBlockData(bLoc, b.getMaterial().createBlockData());
+        Location bLoc = world.getBlockAt(l).getLocation();
+        Location bCenter = bLoc.clone().add(0.5, 0, 0.5);
 
-//        Bukkit.getOnlinePlayers().forEach(p -> p.sendBlockChange(bLoc, Material.AIR.createBlockData()));
-//
-//        ArmorStand as = (ArmorStand) world.spawnEntity(bLoc, EntityType.ARMOR_STAND);
-//        as.setBasePlate(false);
-//        as.setArms(false);
-//        as.setAI(false);
-//        as.setGravity(false);
-//
-//        MiscDisguise miscDisguise = new MiscDisguise(DisguiseType.FALLING_BLOCK, b.getMaterial());
-//        miscDisguise.setEntity(entity);
-//        miscDisguise.startDisguise();
+        world.getPlayers().stream().filter(p -> p != entity).forEach(p -> p.sendBlockChange(bLoc, b));
 
+        FakeBlock fb = new FakeBlock(entity.getUniqueId(), bLoc, b);
 
+        if(entity instanceof Player) {
+            ArmorStand as = fb.spawnFakeBlock(bCenter, world);
+
+            MiscDisguise miscDisguise = new MiscDisguise(DisguiseType.FALLING_BLOCK, b.getMaterial());
+            DisguiseAPI.disguiseToPlayers(as, miscDisguise, Collections.singletonList(entity));
+
+            fb.setEntity(as);
+        }
 
         lockedPlayers.add(entity.getUniqueId());
         lockedBlocks.put(entity.getUniqueId(), b);
 
-        fakeBlocks.add(new FakeBlock(entity.getUniqueId(), b.getMaterial(), bLoc));
+        fakeBlocks.add(fb);
 
     }
 
@@ -200,18 +196,29 @@ public class PropManager {
         Location loc = target.getLocation().clone();
         if(loc.getWorld() == null) return;
 
+        clearDisguise(target);
+
         ArmorStand as = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
         as.setBasePlate(false);
         as.setArms(false);
         as.setAI(false);
         as.setGravity(false);
 
+        if(settingsManager.getEntityHealth().containsKey(entity.getType())) {
+            AttributeInstance maxHealth = as.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+            if(maxHealth != null) {
+                maxHealth.setBaseValue(settingsManager.getEntityHealth().get(entity.getType()));
+                as.setHealth(maxHealth.getValue());
+            }
+        }
+
         disguise.setEntity(as);
         disguise.startDisguise();
         DisguiseAPI.disguiseToAll(as, disguise);
 
-        clearDisguise(target);
         target.setInvisible(true);
+
+        fakeEntities.add(new FakeEntity(target.getUniqueId(), as));
 
         lockedPlayers.add(target.getUniqueId());
         lockedEntities.put(target.getUniqueId(), entity);
@@ -224,6 +231,7 @@ public class PropManager {
         Location loc = entity.getLocation().clone();
         if(loc.getWorld() == null) return;
 
+        clearDisguise(entity);
         ArmorStand as = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
         as.setBasePlate(false);
         as.setArms(false);
@@ -232,8 +240,15 @@ public class PropManager {
 
         String modelID = disguisedMEG.get(entity.getUniqueId());
 
-        ModeledEntity me = ModelEngineAPI.api.getModelManager().createModeledEntity(as);
+        if(settingsManager.getMegHealth().containsKey(modelID)) {
+            AttributeInstance maxHealth = as.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+            if(maxHealth != null) {
+                maxHealth.setBaseValue(settingsManager.getMegHealth().get(modelID));
+                as.setHealth(maxHealth.getValue());
+            }
+        }
 
+        ModeledEntity me = ModelEngineAPI.api.getModelManager().createModeledEntity(as);
 
         me.addActiveModel(ModelEngineAPI.createActiveModel(modelID));
 
@@ -242,9 +257,9 @@ public class PropManager {
         me.setWalking(false);
         me.setJumping(false);
 
-
-        clearDisguise(entity);
         entity.setInvisible(true);
+
+        fakeEntities.add(new FakeEntity(entity.getUniqueId(), as));
 
         lockedPlayers.add(entity.getUniqueId());
         lockedMEG.put(entity.getUniqueId(), modelID);
@@ -269,18 +284,17 @@ public class PropManager {
 
     public void unlockEntity(LivingEntity entity) {
         LivingEntity disguise = lockedEntities.get(entity.getUniqueId());
-        disguiseAsMob(entity, disguise);
+        disguiseAsEntity(entity, disguise);
 
         lockedEntities.remove(entity.getUniqueId(), disguise);
         lockedPlayers.remove(entity.getUniqueId());
-
 
     }
 
     public void unlockMEG(LivingEntity entity) {
         String modelID = lockedMEG.get(entity.getUniqueId());
 
-        disguiseAsModelEngineMob(entity, modelID);
+        disguiseAsMEGEntity(entity, modelID);
 
         lockedPlayers.remove(entity.getUniqueId());
         lockedMEG.remove(entity.getUniqueId(), modelID);
@@ -295,11 +309,20 @@ public class PropManager {
     public void clearDisguise(LivingEntity entity) {
         FakeBlock fb = getFakeBlock(entity.getUniqueId());
         if(fb != null) {
-            if(fb.getLoc().getWorld() != null) {
-                fb.getLoc().getWorld().setBlockData(fb.getLoc(), Material.AIR.createBlockData());
-                fakeBlocks.remove(fb);
+            World world = fb.getLoc().getWorld();
+            if(world != null) {
+                world.setBlockData(fb.getLoc(), Material.AIR.createBlockData());
+                world.getPlayers().forEach(p -> p.sendBlockChange(fb.getLoc(), Material.AIR.createBlockData()));
             }
+
+            if(fb.getEntity() != null) {
+                fb.getEntity().remove();
+            }
+            fakeBlocks.remove(fb);
         }
+
+        FakeEntity fE = getFakeEntity(entity.getUniqueId());
+        if(fE != null) {fE.getEntity().remove();}
 
         if(isDisguisedAsMob(entity)) {
             DisguiseAPI.undisguiseToAll(entity);
@@ -317,7 +340,6 @@ public class PropManager {
                 me.getAllActiveModel().clear();
                 disguisedMEG.remove(entity.getUniqueId());
             }
-
         }
 
         entity.setInvisible(false);
@@ -325,18 +347,36 @@ public class PropManager {
 
     public FakeBlock getFakeBlock(UUID u) {
         for(FakeBlock fb : fakeBlocks) {
-            if(fb.getDisguised() == u) return fb;
+            if(fb.getDisguised().equals(u)) return fb;
         }
         return null;
     }
 
     public FakeBlock getFakeBlock(Location loc) {
         for(FakeBlock fb : fakeBlocks) {
-            if(fb.getLoc() == loc) return fb;
+            Location l = fb.getLoc();
+            if(!l.equals(loc)) {
+                l.subtract(.5, .5, .5);
+            }
+            if(l.equals(loc)) return fb;
         }
         return null;
     }
 
+    public FakeEntity getFakeEntity(UUID u) {
+        for(FakeEntity fE : fakeEntities) {
+            if(fE.getDisguised().equals(u)) return fE;
+        }
+
+        return null;
+    }
+
+    public FakeEntity getFakeEntity(LivingEntity entity) {
+        for(FakeEntity fE : fakeEntities) {
+            if(fE.getEntity() == entity) return fE;
+        }
+        return null;
+    }
 
     public List<UUID> getLockedPlayers() {return lockedPlayers;}
 
@@ -354,10 +394,6 @@ public class PropManager {
 
     public Map<UUID, String> getDisguisedMEG() {
         return disguisedMEG;
-    }
-
-    public List<FakeBlock> getFakeBlocks() {
-        return fakeBlocks;
     }
 
 }

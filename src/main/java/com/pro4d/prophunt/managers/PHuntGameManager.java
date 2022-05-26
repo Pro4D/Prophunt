@@ -13,6 +13,7 @@ import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.LivingEntity;
@@ -30,7 +31,7 @@ import java.util.logging.Level;
 public class PHuntGameManager {
 
     private GameStates state;
-    private WinningCondition winningCondition = WinningCondition.TIED;
+    private WinningCondition winningCondition = WinningCondition.TIME_OVER;
     private final List<UUID> allPlayers;
     private final Map<UUID, Integer> killCounter;
 
@@ -196,12 +197,6 @@ public class PHuntGameManager {
 
             case ENDING:
                 displayWinner();
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        endGame();
-                    }
-                }.runTaskLater(plugin, 20 * 10L);
                 break;
 
         }
@@ -262,6 +257,10 @@ public class PHuntGameManager {
         team.removeMember(entity);
         allPlayers.remove(entity.getUniqueId());
 
+        if(team == Teams.HIDERS) {
+            propManager.clearDisguise(entity);
+        }
+
         if(entity instanceof Player) {
             Player player = (Player) entity;
             player.setPlayerListName(PHuntMessages.translate("&r" + player.getName()));
@@ -309,13 +308,11 @@ public class PHuntGameManager {
             @Override
             public void run() {
                 if(progress <= 0) {
-                    bar.setVisible(false);
                     startGame();
                     cancel();
                 } else {
                     bossBar.setProgress(progress);
                     progress = Double.parseDouble(df.format(progress - increment));
-                    //Bukkit.broadcastMessage("P: " + progress);
                     c++;
 
                     if((time - c) > -1) {
@@ -382,9 +379,10 @@ public class PHuntGameManager {
             @Override
             public void run() {
                 if(progress <= 0) {
+                    setWinningCondition(WinningCondition.TIME_OVER);
                     setGameState(GameStates.ENDING);
-                    bar.setVisible(false);
                     cancel();
+
                 } else {
                     bossBar.setProgress(progress);
                     progress = Double.parseDouble(df.format(progress - increment));
@@ -432,11 +430,15 @@ public class PHuntGameManager {
 
         if(PHuntUtils.isLocationUnsafe(loc) || map.getWorld().getBlockAt(loc).getType() != Material.AIR || !blockLocations.contains(loc)) {
             boolean startingPointFound = false;
-            for(Block b : map.getBlocks()) {
-                if(b.getType() != Material.AIR) continue;
-                if(PHuntUtils.isLocationUnsafe(b.getLocation())) continue;
-                loc = b.getLocation();
+            int attempts = map.getBlocks().size();
+            for(int a = attempts; a != 0; a--) {
+                Location l = blockLocations.get(PHuntUtils.randomInteger(0, blockLocations.size() - 1));
+                if(l.getWorld() == null) continue;
+                if(l.getWorld().getBlockAt(l).getType() == Material.AIR) continue;
+                if(PHuntUtils.isLocationUnsafe(l)) continue;
+                loc = l;
                 startingPointFound = true;
+                break;
             }
             if(!startingPointFound) {
                 plugin.getServer().getOnlinePlayers().forEach(p -> p.sendMessage(PHuntMessages.translate("&cNo clear starting point found for map &r" + map.getName() + "&c, could not start game.")));
@@ -512,10 +514,13 @@ public class PHuntGameManager {
 
             entity.teleport(getMapManager().getLobbySpawnpoint());
 
-            entity.resetMaxHealth();
-            entity.setHealth(entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+            AttributeInstance inst = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+            if(inst != null) {
+                double maxHealth = inst.getDefaultValue();
+                inst.setBaseValue(maxHealth);
+                entity.setHealth(inst.getValue());
+            }
             entity.setInvisible(false);
-
             displayRoundInfo(entity, topKillers, finalKills);
 
         });
@@ -528,43 +533,40 @@ public class PHuntGameManager {
     public void displayWinner() {
         cancelTimers();
         plugin.getServer().getOnlinePlayers().forEach(bar::addPlayer);
-        bar.setVisible(false);
 
         switch (winningCondition) {
-            case TIED:
-                bar.setTitle(PHuntMessages.translate("&eRound ended in a tie!"));
-                bar.setVisible(true);
-                break;
-
             case FORCE_QUIT:
-                bar.setTitle(PHuntMessages.translate("&c&lForce Quit Round!"));
                 bar.setVisible(true);
+                bar.setTitle(PHuntMessages.translate("&c&lForce Quit Round!"));
                 break;
 
             case TIME_OVER:
-                int hunters = Teams.HUNTERS.getMembers().size();
+                //int hunters = Teams.HUNTERS.getMembers().size();
                 int hiders = Teams.HIDERS.getMembers().size();
-                if(hunters > hiders) {
-                    setWinningCondition(WinningCondition.HUNTERS_WIN);
-                } else if(hiders > hunters) {
-                    setWinningCondition(WinningCondition.HIDERS_WIN);
-                } else {
-                    setWinningCondition(WinningCondition.TIED);
+                if(hiders >= 1) {
+                   setWinningCondition(WinningCondition.HIDERS_WIN);
                 }
                 displayWinner();
                 break;
 
             case HIDERS_WIN:
-                bar.setTitle(PHuntMessages.translate(Teams.HIDERS.getColor() + Teams.HIDERS.getName() + " have won!"));
                 bar.setVisible(true);
+                bar.setTitle(PHuntMessages.translate(Teams.HIDERS.getColor() + Teams.HIDERS.getName() + " have won!"));
                 break;
 
             case HUNTERS_WIN:
-                bar.setTitle(PHuntMessages.translate(Teams.HUNTERS.getColor() + Teams.HUNTERS.getName() + " have won!"));
                 bar.setVisible(true);
+                bar.setTitle(PHuntMessages.translate(Teams.HUNTERS.getColor() + Teams.HUNTERS.getName() + " have won!"));
                 break;
 
         }
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                endGame();
+            }
+        }.runTaskLater(plugin, 20 * 10L);
 
     }
 
@@ -658,12 +660,13 @@ public class PHuntGameManager {
         World world = loc.getWorld();
         if(world == null) return;
 
-        Particle.DustOptions options = new Particle.DustOptions(Color.fromRGB(222, 30, 24), 1.5F);
-        world.spawnParticle(Particle.REDSTONE, loc, 25,
-                PHuntUtils.randomDouble(0.008, 0.01),
-                PHuntUtils.randomDouble(0.005, 0.01),
-                PHuntUtils.randomDouble(0.007, 0.01),
+        Particle.DustOptions options = new Particle.DustOptions(Color.fromRGB(222, 30, 24), 1.2F);
+        world.spawnParticle(Particle.REDSTONE, loc, 27,
+                PHuntUtils.randomDouble(0.001, 0.003),
+                PHuntUtils.randomDouble(0.001, 0.002),
+                PHuntUtils.randomDouble(0.001, 0.003),
                 options);
+
 
     }
 
@@ -748,6 +751,40 @@ public class PHuntGameManager {
     public PropManager getPropManager() {return propManager;}
 
     public Location tempSpecSpawn() {return tempSpecSpawn;}
+
+    public void testCountdown() {
+        int time = 10;
+        bar.setTitle(PHuntMessages.translate("&l&cTimer " + time));
+        bar.setVisible(true);
+
+        plugin.getServer().getOnlinePlayers().forEach(bar::addPlayer);
+
+        new BukkitRunnable() {
+            final BossBar bossBar = bar;
+            double progress = 1.0;
+            final double increment = Double.parseDouble(df.format(progress / time));
+            final int t = time;
+            int c = 0;
+
+            @Override
+            public void run() {
+                if(progress <= 0) {
+                    Bukkit.broadcastMessage("Timer Over");
+                    cancel();
+
+                } else {
+                    bossBar.setProgress(progress);
+                    progress = Double.parseDouble(df.format(progress - increment));
+                    c++;
+                    if((t - c) > -1) {
+                        bossBar.setTitle(PHuntMessages.translate("&l&cTimer " + (t - c)));
+                    }
+
+                }
+
+            }
+        }.runTaskTimer(plugin, 0, 20);
+    }
 
 
 }

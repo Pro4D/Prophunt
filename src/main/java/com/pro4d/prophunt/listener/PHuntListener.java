@@ -2,13 +2,14 @@ package com.pro4d.prophunt.listener;
 
 import com.mojang.datafixers.util.Pair;
 import com.pro4d.prophunt.Prophunt;
-import com.pro4d.prophunt.misc.TeamInventory;
 import com.pro4d.prophunt.enums.Teams;
 import com.pro4d.prophunt.enums.WinningCondition;
 import com.pro4d.prophunt.managers.PHuntGameManager;
 import com.pro4d.prophunt.managers.PropManager;
 import com.pro4d.prophunt.misc.FakeBlock;
+import com.pro4d.prophunt.misc.FakeEntity;
 import com.pro4d.prophunt.misc.GameStates;
+import com.pro4d.prophunt.misc.TeamInventory;
 import com.pro4d.prophunt.utils.PHuntMessages;
 import com.pro4d.prophunt.utils.PHuntUtils;
 import com.ticxo.modelengine.api.ModelEngineAPI;
@@ -23,6 +24,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.craftbukkit.v1_18_R2.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_18_R2.inventory.CraftItemStack;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -64,7 +66,6 @@ public class PHuntListener implements Listener {
 
         list = new ArrayList<>();
         list.add(new Pair<>(EnumItemSlot.a, CraftItemStack.asNMSCopy(new ItemStack(Material.AIR))));
-        
     }
 
 
@@ -201,20 +202,30 @@ public class PHuntListener implements Listener {
         }.runTaskLater(plugin, 1L);
     }
 
+
     @EventHandler
     private void onDamage(EntityDamageByEntityEvent event) {
         if(gameManager.getState() != GameStates.ACTIVE) return;
-        if(!(event.getDamager() instanceof Player)) return;
 
         LivingEntity damager = (LivingEntity) event.getDamager();
         LivingEntity entityDamaged = (LivingEntity) event.getEntity();
 
-        Teams damagerTeam = Teams.getPlayerTeam(damager);
-        if(damagerTeam == null) return;
+        if(entityDamaged.getType() == EntityType.ARMOR_STAND) {
+            FakeEntity fE = propManager.getFakeEntity(entityDamaged);
+            if(fE != null) {
+                LivingEntity disguised = (LivingEntity) Bukkit.getEntity(fE.getDisguised());
+                if(disguised != null) {
+                    disguised.damage(event.getDamage());
+                    gameManager.bloodAnimation(disguised.getLocation());
+                }
+            }
+        }
 
         Teams entityDamagedTeam = Teams.getPlayerTeam(entityDamaged);
-
         if(entityDamagedTeam == null) return;
+
+        Teams damagerTeam = Teams.getPlayerTeam(damager);
+        if(damagerTeam == null) return;
 
         if(!gameManager.getSettingsManager().allowTeamPVP()) {
             if(damagerTeam == entityDamagedTeam) event.setCancelled(true);
@@ -234,7 +245,6 @@ public class PHuntListener implements Listener {
         Player player = event.getPlayer();
         Teams team = Teams.getPlayerTeam(player);
         if(team == null) return;
-        //if(team == Teams.SPECTATORS) return;
 
         if(team == Teams.HUNTERS) {
             if(!event.hasBlock()) return;
@@ -252,6 +262,11 @@ public class PHuntListener implements Listener {
             LivingEntity hider = (LivingEntity) Bukkit.getEntity(fakeBlock.getDisguised());
             if(hider != null) {
                 hider.damage(damage, player);
+                gameManager.bloodAnimation(fakeBlock.getLoc().add(.5, .5, .5));
+            }
+
+            if(event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                player.sendBlockChange(fakeBlock.getLoc(), fakeBlock.getBlockData());
             }
             return;
         }
@@ -307,11 +322,11 @@ public class PHuntListener implements Listener {
                     if(ModelEngineAPI.getModelBlueprint(modelID) == null) return;
 
                     if(!gameManager.getSettingsManager().getMegHealth().containsKey(modelID)) return;
-                    propManager.disguiseAsModelEngineMob(player, modelID);
+                    propManager.disguiseAsMEGEntity(player, modelID);
 
                 } else {
                     if(!gameManager.getSettingsManager().getEntityHealth().containsKey(entity.getType())) return;
-                    propManager.disguiseAsMob(player, entity);
+                    propManager.disguiseAsEntity(player, entity);
                 }
             }
         }
@@ -390,7 +405,7 @@ public class PHuntListener implements Listener {
                 propManager.lockMEG(player);
 
             } else if(propManager.isDisguisedAsBlock(player)) {
-                propManager.lockBlock(player, propManager.getDisguisedBlocks().get(player.getUniqueId()));
+                propManager.lockBlock(player);
             }
 
         } else if(propManager.getLockedBlocks().containsKey(player.getUniqueId())) {
@@ -484,11 +499,12 @@ public class PHuntListener implements Listener {
 
     @EventHandler
     private void damageItem(PlayerItemDamageEvent event) {
-        if(gameManager.getState() != GameStates.ACTIVE) return;
+        GameStates state=  gameManager.getState();
         if(!gameManager.getAllItems().contains(event.getItem())) return;
-        event.setCancelled(true);
+        if(state == GameStates.ACTIVE || state == GameStates.STARTING || state == GameStates.ENDING) {
+            event.setCancelled(true);
+        }
     }
-
 
 
     public Map<UUID, Teams> getDisconnectTeamMap() {return disconnectTeamMap;}

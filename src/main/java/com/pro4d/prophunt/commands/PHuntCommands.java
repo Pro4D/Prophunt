@@ -43,6 +43,7 @@ public class PHuntCommands implements CommandExecutor {
             gameManager.getSettingsManager().validateSettingsConfig();
             gameManager.getSettingsManager().validateSwappablesConfig();
 
+            gameManager.cleanup();
             sender.sendMessage(PHuntMessages.reloadMessage());
             return true;
         }
@@ -249,8 +250,8 @@ public class PHuntCommands implements CommandExecutor {
                     player.sendMessage(PHuntMessages.invalidCommandUsageMessage());
                     return false;
                 }
-                if(gameManager.getMapManager().isMap(args[1])) {
-                    PHuntMap map = gameManager.getMapManager().getMap(args[1]);
+                PHuntMap map = gameManager.getMapManager().getMap(args[1]);
+                if(map != null) {
                     gameManager.getMapManager().voteForMap(map.getName(), player);
                 }
                 return true;
@@ -258,10 +259,6 @@ public class PHuntCommands implements CommandExecutor {
 
             case "lobby":
                 player.teleport(gameManager.getMapManager().getLobbySpawnpoint());
-                return true;
-
-            case "bA":
-                gameManager.bloodAnimation(player.getLocation().add(0, .3, 0));
                 return true;
 
 //            case "shU":
@@ -274,16 +271,8 @@ public class PHuntCommands implements CommandExecutor {
 //                shulker.setGlowing(true);
 //                return true;
 
-            case "edisgB":
-                LivingEntity e = PHuntUtils.getEntityInLOS(player, plugin.getDistance());
-                if(e == null) return false;
-                gameManager.getPropManager().disguiseAsBlock(e, player.getWorld().getBlockAt(player.getLocation().subtract(0, 1, 0)).getBlockData());
-                return true;
-
-            case "edisgM":
-                LivingEntity ee = PHuntUtils.getEntityInLOS(player, plugin.getDistance());
-                if(ee == null) return false;
-                gameManager.getPropManager().disguiseAsModelEngineMob(ee, "kindletronsr");
+            case "timer":
+                gameManager.testCountdown();
                 return true;
 
         }
