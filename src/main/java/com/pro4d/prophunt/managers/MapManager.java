@@ -137,13 +137,6 @@ public class MapManager {
         return null;
     }
 
-    public boolean isMap(String name) {
-        for(PHuntMap map : allMaps.keySet()) {
-            if(map.getName().equalsIgnoreCase(name)) return true;
-        }
-        return false;
-    }
-
     public Map<PHuntMap, Integer> getAllMaps() {
         return allMaps;
     }
@@ -163,11 +156,11 @@ public class MapManager {
     public PHuntMap getCurrentMap() {return getMap(currentMapName);}
 
     public void voteForMap(String mapName, Player player) {
-        if(!isMap(mapName)) {
+        PHuntMap map = getMap(mapName);
+        if(map == null) {
             player.sendMessage(PHuntMessages.noMapWithThatName());
             return;
         }
-        PHuntMap map = getMap(mapName);
         if(votedFor.containsKey(player.getUniqueId())) {
             if(votedFor.get(player.getUniqueId()) == map) {
                 player.sendMessage(PHuntMessages.alreadyVotedForThisMap());
