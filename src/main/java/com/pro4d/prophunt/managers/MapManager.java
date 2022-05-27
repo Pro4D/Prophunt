@@ -111,7 +111,7 @@ public class MapManager {
         Operation operation = new ClipboardHolder(clipboard)
                 .createPaste(editSession)
                 .to(origin)
-                .ignoreAirBlocks(false)
+                .ignoreAirBlocks(true)
                 .build();
 
         try {

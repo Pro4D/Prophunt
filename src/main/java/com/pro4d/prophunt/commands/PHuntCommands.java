@@ -256,20 +256,9 @@ public class PHuntCommands implements CommandExecutor {
                 }
                 return true;
 
-
             case "lobby":
                 player.teleport(gameManager.getMapManager().getLobbySpawnpoint());
                 return true;
-
-//            case "shU":
-//                Location l = player.getWorld().getBlockAt(player.getLocation()).getLocation();
-//                LivingEntity shulker = (LivingEntity) player.getWorld().spawnEntity(l, EntityType.SHULKER);
-//
-//                shulker.setAI(false);
-//                shulker.setInvulnerable(true);
-//                shulker.setInvisible(true);
-//                shulker.setGlowing(true);
-//                return true;
 
             case "timer":
                 gameManager.testCountdown();

@@ -15,13 +15,13 @@ import com.pro4d.prophunt.utils.PHuntUtils;
 import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.model.ModeledEntity;
 import net.minecraft.network.protocol.game.PacketPlayOutEntityEquipment;
+import net.minecraft.network.protocol.game.PacketPlayOutEntityMetadata;
 import net.minecraft.world.entity.EnumItemSlot;
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
+import org.bukkit.craftbukkit.v1_18_R2.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_18_R2.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_18_R2.inventory.CraftItemStack;
 import org.bukkit.entity.EntityType;
@@ -40,6 +40,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.RayTraceResult;
 
 import java.util.*;
 
@@ -52,7 +53,10 @@ public class PHuntListener implements Listener {
     private final Map<UUID, Teams> disconnectTeamMap;
     private final Map<UUID, Integer> disconnectRoundCountMap;
 
+    private final Map<UUID, UUID> glowingEntities;
+
     private final List<Pair<EnumItemSlot, net.minecraft.world.item.ItemStack>> list;
+
     public PHuntListener(Prophunt plugin) {
 
         this.plugin = plugin;
@@ -64,6 +68,8 @@ public class PHuntListener implements Listener {
         disconnectTeamMap = new HashMap<>();
         disconnectRoundCountMap = new HashMap<>();
 
+        glowingEntities = new HashMap<>();
+
         list = new ArrayList<>();
         list.add(new Pair<>(EnumItemSlot.a, CraftItemStack.asNMSCopy(new ItemStack(Material.AIR))));
     }
@@ -73,8 +79,10 @@ public class PHuntListener implements Listener {
     private void onLeave(PlayerQuitEvent event) {
         if(Teams.getPlayerTeam(event.getPlayer()) == null) return;
         Player player = event.getPlayer();
-        Teams team = Teams.getPlayerTeam(player);
+        player.setGlowing(false);
+        player.setInvisible(false);
 
+        Teams team = Teams.getPlayerTeam(player);
 
         int rc = gameManager.getRoundCount();
         disconnectTeamMap.put(player.getUniqueId(), team);
@@ -348,18 +356,26 @@ public class PHuntListener implements Listener {
 
     @EventHandler
     private void onMove(PlayerMoveEvent event) {
-        if(gameManager.getState() != GameStates.ACTIVE) return;
         Player player = event.getPlayer();
-        if(Teams.getPlayerTeam(player) == null) return;
+        if(glowingEntities.containsKey(player.getUniqueId())) {
+            //clear glowing for whatever they were looking at
+            LivingEntity glowing = (LivingEntity) Bukkit.getEntity(glowingEntities.get(player.getUniqueId()));
+            sendPotionPacket(player, glowing, false);
+        }
+
+        if (gameManager.getState() != GameStates.ACTIVE) return;
+        if (Teams.getPlayerTeam(player) == null) return;
         Teams team = Teams.getPlayerTeam(player);
-        if(gameManager.areHuntersFrozen()) {
-            if(team == Teams.HUNTERS) {
+        if (gameManager.areHuntersFrozen()) {
+            if (team == Teams.HUNTERS) {
                 event.setCancelled(true);
             }
         }
-        //do full block check
-        if(team == Teams.HIDERS) {
+
+        if (team == Teams.HIDERS) {
             if (propManager.getLockedPlayers().contains(player.getUniqueId())) {
+                if(event.getTo() == null) return;
+
                 double fX = event.getFrom().getX();
                 double fY = event.getFrom().getY();
                 double fZ = event.getFrom().getZ();
@@ -368,23 +384,38 @@ public class PHuntListener implements Listener {
                 double tY = event.getTo().getY();
                 double tZ = event.getTo().getZ();
 
-                if(fX != tX || fY != tY || fZ != tZ) {
+                if (fX != tX || fY != tY || fZ != tZ) {
                     event.setCancelled(true);
                 }
             }
-        }
 
-//        if(team == Teams.HIDERS) {
-//            if(!player.getInventory().getItemInMainHand().isSimilar(gameManager.getSettingsManager().getPropSwapper())) return;
-//
-//            //highlight
-//            if (PHuntUtils.findItem(player, gameManager.getSettingsManager().getPropSwapper()) != -1) {
-//                if(player.getTargetBlockExact(5, FluidCollisionMode.ALWAYS) != null) {
-//                    Block b = player.getTargetBlockExact(5, FluidCollisionMode.ALWAYS);
-//                    Bukkit.broadcastMessage("B: " + b.getType().name() + " L: " + b.getLocation());
-//                }
-//            }
-//        }
+            ItemStack item = player.getInventory().getItemInMainHand();
+            if (item.getType() == Material.AIR) return;
+
+            if (item.isSimilar(gameManager.getSettingsManager().getPropSwapper())) {
+                LivingEntity entity = PHuntUtils.getEntityInLOS(player, 5);
+                if(entity != null) {
+                    if(!gameManager.getSettingsManager().getEntityHealth().containsKey(entity.getType())) return;
+                    sendPotionPacket(player, entity, true);
+
+                } else {
+                    RayTraceResult result = player.rayTraceBlocks(5, FluidCollisionMode.ALWAYS);
+                    if(result == null) return;
+                    Block block = result.getHitBlock();
+                    if (block == null) return;
+                    if(!gameManager.getSettingsManager().getBlockHealth().containsKey(block.getType())) return;
+
+                    LivingEntity shulker = (LivingEntity) player.getWorld().spawnEntity(block.getLocation().add(.5, 0, .5), EntityType.SHULKER);
+
+                    shulker.setAI(false);
+                    shulker.setInvulnerable(true);
+                    shulker.setInvisible(true);
+
+                    sendPotionPacket(player, shulker, true);
+
+                }
+            }
+        }
     }
 
 
@@ -511,6 +542,24 @@ public class PHuntListener implements Listener {
 
     public Map<UUID, Integer> getDisconnectRoundCountMap() {
         return disconnectRoundCountMap;
+    }
+
+    private void sendPotionPacket(Player player, LivingEntity target, boolean glowing) {
+        CraftEntity glowingEntity = (CraftEntity) target;
+        if(glowingEntity == null) return;
+
+        target.setGlowing(glowing);
+        PacketPlayOutEntityMetadata metaDataPacket = new PacketPlayOutEntityMetadata(glowingEntity.getEntityId(), glowingEntity.getHandle().ai(), true);
+
+        ((CraftPlayer) player).getHandle().b.a(metaDataPacket);
+
+        if(!glowing) {
+            if(target.getType() == EntityType.SHULKER) {
+                if(!target.hasAI()) target.remove();
+            }
+            glowingEntities.remove(player.getUniqueId(), target.getUniqueId());
+        } else glowingEntities.put(player.getUniqueId(), target.getUniqueId());
+
     }
 
 }

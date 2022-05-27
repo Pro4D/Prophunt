@@ -434,7 +434,7 @@ public class PHuntGameManager {
             for(int a = attempts; a != 0; a--) {
                 Location l = blockLocations.get(PHuntUtils.randomInteger(0, blockLocations.size() - 1));
                 if(l.getWorld() == null) continue;
-                if(l.getWorld().getBlockAt(l).getType() == Material.AIR) continue;
+                if(l.getWorld().getBlockAt(l).getType() != Material.AIR) continue;
                 if(PHuntUtils.isLocationUnsafe(l)) continue;
                 loc = l;
                 startingPointFound = true;
