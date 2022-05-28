@@ -24,7 +24,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.logging.Level;
 
@@ -44,7 +43,6 @@ public class PHuntGameManager {
     private final ItemBuilder hunterWeapon;
 
     private final List<ItemBuilder> allItems;
-    private final DecimalFormat df;
 
     private final Prophunt plugin;
     private final PropManager propManager;
@@ -58,8 +56,6 @@ public class PHuntGameManager {
     public PHuntGameManager(Prophunt plugin) {
         this.plugin = plugin;
         bar = new BarManager().getBar();
-
-        df = new DecimalFormat("#.##");
 
         state = GameStates.LOBBY;
         allItems = new ArrayList<>();
@@ -301,29 +297,29 @@ public class PHuntGameManager {
         new BukkitRunnable() {
             final BossBar bossBar = bar;
             double progress = 1.0;
-            final double increment = Double.parseDouble(df.format(progress / voteTime));
-            final int time = voteTime;
-            int c = 0;
+            final double increment = 1.0 / (20 * voteTime);
+            int time = voteTime;
+            int counter = 20;
 
             @Override
             public void run() {
+                bossBar.setProgress(progress);
+
+                progress = progress - increment;
+                counter--;
+                if(counter == 0) {
+                    if(time - 1 != 0) {
+                        bar.setTitle(PHuntMessages.translate("&lStarting In " + time--));
+                    }
+                    counter = 20;
+                }
                 if(progress <= 0) {
                     startGame();
                     cancel();
-                } else {
-                    bossBar.setProgress(progress);
-                    progress = Double.parseDouble(df.format(progress - increment));
-                    c++;
-
-                    if((time - c) > -1) {
-                        bossBar.setTitle(PHuntMessages.translate("&lStarting in " + (time - c)));
-                    }
-
                 }
-
             }
-        }.runTaskTimer(plugin, 0, 20);
 
+        }.runTaskTimer(plugin, 0, 0);
     }
 
     private void startHunterCountdown() {
@@ -334,32 +330,32 @@ public class PHuntGameManager {
         plugin.getServer().getOnlinePlayers().forEach(bar::addPlayer);
 
         new BukkitRunnable() {
-            final BossBar bossBar = bar;
             double progress = 1.0;
-            final double increment = Double.parseDouble(df.format(progress / hunterReleaseTime));
-            final int time = hunterReleaseTime;
-            int c = 0;
+            final double increment = 1.0 / (20 * hunterReleaseTime);
+            int time = hunterReleaseTime;
+            int counter = 20;
 
             @Override
             public void run() {
+                bar.setProgress(progress);
+
+                progress = progress - increment;
+                counter--;
+                if(counter == 0) {
+                    if(time - 1 != 0) {
+                        bar.setTitle(PHuntMessages.translate("&l&cHunters released in " + time--));
+                    }
+                    counter = 20;
+                }
+
                 if(progress <= 0) {
                     bar.setVisible(false);
                     huntersFrozen = false;
                     startGameCountdown();
                     cancel();
-                } else {
-                    bossBar.setProgress(progress);
-                    progress = Double.parseDouble(df.format(progress - increment));
-                    //Bukkit.broadcastMessage("P: " + progress);
-                    c++;
-                    if((time - c) > -1) {
-                        bossBar.setTitle(PHuntMessages.translate("&l&cHunters released in " + (time - c)));
-                    }
-
                 }
-
             }
-        }.runTaskTimer(plugin, 0, 20);
+        }.runTaskTimer(plugin, 0, 0);
     }
 
     private void startGameCountdown() {
@@ -370,45 +366,50 @@ public class PHuntGameManager {
         plugin.getServer().getOnlinePlayers().forEach(bar::addPlayer);
 
         new BukkitRunnable() {
-            final BossBar bossBar = bar;
             double progress = 1.0;
-            final double increment = Double.parseDouble(df.format(progress / gameTime));
-            final int time = gameTime;
-            int c = 0;
+            final double increment = 1.0 / (20 * gameTime);
+            int time = gameTime;
+            int counter = 20;
 
             @Override
             public void run() {
+                bar.setProgress(progress);
+
+                progress = progress - increment;
+                counter--;
+                if(counter == 0) {
+                    if(time - 1 != 0) {
+                        bar.setTitle(PHuntMessages.translate("&lTime Left " + time--));
+                    }
+                    counter = 20;
+                }
+
+                if(counter % 10 == 0) {
+                        allPlayers.forEach(uuid -> {
+                            if (Bukkit.getPlayer(uuid) != null) {
+                                Player player = Bukkit.getPlayer(uuid);
+                                assert player != null;
+
+                                if (propManager.isDisguised(player)) {
+                                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, plugin.getMessages().getLockMessage());
+
+                                } else if (propManager.isLocked(player)) {
+                                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, plugin.getMessages().getUnlockMessage());
+                                }
+
+                            }
+                        });
+                    }
+
                 if(progress <= 0) {
                     setWinningCondition(WinningCondition.TIME_OVER);
                     setGameState(GameStates.ENDING);
                     cancel();
 
-                } else {
-                    bossBar.setProgress(progress);
-                    progress = Double.parseDouble(df.format(progress - increment));
-                    c++;
-                    if((time - c) > -1) {
-                        bossBar.setTitle(PHuntMessages.translate("&lTime Left " + (time - c)));
-                    }
-
-                    allPlayers.forEach(uuid -> {
-                        if(Bukkit.getPlayer(uuid) != null) {
-                            Player player = Bukkit.getPlayer(uuid);
-                            assert player != null;
-
-                            if(propManager.isDisguised(player)) {
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, plugin.getMessages().getLockMessage());
-
-                            } else if(propManager.isLocked(player)) {
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, plugin.getMessages().getUnlockMessage());
-                            }
-
-                        }
-                    });
-
                 }
+
             }
-        }.runTaskTimer(plugin, 0, 20);
+        }.runTaskTimer(plugin, 0, 0);
     }
 
     public void startGame() {
@@ -751,40 +752,6 @@ public class PHuntGameManager {
     public PropManager getPropManager() {return propManager;}
 
     public Location tempSpecSpawn() {return tempSpecSpawn;}
-
-    public void testCountdown() {
-        int time = 10;
-        bar.setTitle(PHuntMessages.translate("&l&cTimer " + time));
-        bar.setVisible(true);
-
-        plugin.getServer().getOnlinePlayers().forEach(bar::addPlayer);
-
-        new BukkitRunnable() {
-            final BossBar bossBar = bar;
-            double progress = 1.0;
-            final double increment = Double.parseDouble(df.format(progress / time));
-            final int t = time;
-            int c = 0;
-
-            @Override
-            public void run() {
-                if(progress <= 0) {
-                    Bukkit.broadcastMessage("Timer Over");
-                    cancel();
-
-                } else {
-                    bossBar.setProgress(progress);
-                    progress = Double.parseDouble(df.format(progress - increment));
-                    c++;
-                    if((t - c) > -1) {
-                        bossBar.setTitle(PHuntMessages.translate("&l&cTimer " + (t - c)));
-                    }
-
-                }
-
-            }
-        }.runTaskTimer(plugin, 0, 20);
-    }
 
 
 }

@@ -260,10 +260,6 @@ public class PHuntCommands implements CommandExecutor {
                 player.teleport(gameManager.getMapManager().getLobbySpawnpoint());
                 return true;
 
-            case "timer":
-                gameManager.testCountdown();
-                return true;
-
         }
 
         player.sendMessage(PHuntMessages.invalidCommandUsageMessage());

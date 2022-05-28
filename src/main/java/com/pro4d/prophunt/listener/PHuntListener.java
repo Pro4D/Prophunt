@@ -39,6 +39,7 @@ import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 
@@ -79,8 +80,6 @@ public class PHuntListener implements Listener {
     private void onLeave(PlayerQuitEvent event) {
         if(Teams.getPlayerTeam(event.getPlayer()) == null) return;
         Player player = event.getPlayer();
-        player.setGlowing(false);
-        player.setInvisible(false);
 
         Teams team = Teams.getPlayerTeam(player);
 
@@ -92,14 +91,15 @@ public class PHuntListener implements Listener {
 
     @EventHandler
     private void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
         if(gameManager.getState() == GameStates.LOBBY) {
             if (gameManager.getMapManager().getLobbySpawnpoint() != null) {
                 //do player count check
                 //enough players have joined, begin countdown
-                event.getPlayer().teleport(gameManager.getMapManager().getLobbySpawnpoint());
+                player.teleport(gameManager.getMapManager().getLobbySpawnpoint());
             }
             if (gameManager.getSettingsManager().autoStart()) {
-                long playerCount = plugin.getServer().getOnlinePlayers().stream().filter(player -> player.getGameMode() != GameMode.SPECTATOR).count();
+                long playerCount = plugin.getServer().getOnlinePlayers().stream().filter(p -> player.getGameMode() != GameMode.SPECTATOR).count();
                 if (playerCount >= gameManager.getSettingsManager().getMinimumPlayerCount()) {
                     gameManager.setGameState(GameStates.STARTING);
                 }
@@ -109,14 +109,13 @@ public class PHuntListener implements Listener {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        plugin.getMessages().getTeamMessages().forEach(teamMessage -> event.getPlayer().spigot().sendMessage(teamMessage));
+                        plugin.getMessages().getTeamMessages().forEach(teamMessage -> player.spigot().sendMessage(teamMessage));
                     }
                 }.runTaskLater(plugin, 30L);
 
             }
         }
         if(gameManager.getState() == GameStates.ACTIVE) {
-            Player player = event.getPlayer();
             if(!disconnectRoundCountMap.containsKey(player.getUniqueId())) return;
             if(disconnectRoundCountMap.get(player.getUniqueId()) == gameManager.getRoundCount()) {
                 if(!disconnectTeamMap.containsKey(player.getUniqueId())) return;
@@ -126,13 +125,11 @@ public class PHuntListener implements Listener {
             }
         }
 
-        if(!plugin.getHeads().containsKey(event.getPlayer().getUniqueId())) {
+        if(!plugin.getHeads().containsKey(player.getUniqueId())) {
             new BukkitRunnable() {
 
                 @Override
                 public void run() {
-                    Player player = event.getPlayer();
-
                     ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
                     SkullMeta meta = (SkullMeta) skull.getItemMeta();
                     assert meta != null;
@@ -145,6 +142,14 @@ public class PHuntListener implements Listener {
                 }
             }.runTaskLaterAsynchronously(plugin, 10L);
 
+        }
+        if(player.isInvisible() || player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+            player.setInvisible(false);
+            player.removePotionEffect(PotionEffectType.INVISIBILITY);
+        }
+        if(player.isGlowing() || player.hasPotionEffect(PotionEffectType.GLOWING)) {
+            player.setGlowing(false);
+            player.removePotionEffect(PotionEffectType.GLOWING);
         }
 
     }

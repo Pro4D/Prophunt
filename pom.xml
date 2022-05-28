@@ -6,12 +6,12 @@
 
     <groupId>com.pro4d</groupId>
     <artifactId>Prophunt</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <packaging>jar</packaging>
 
     <name>Prophunt</name>
 
-    <description>Popular GMod game, 'Prophunt', but in Minecraft!</description>
+    <description>Popular GMod game, 'Prophunt', recreated in Minecraft!</description>
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
